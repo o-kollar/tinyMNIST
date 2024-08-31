@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST Classifier Visualization</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            margin-top: 10px;
+        }
+        #predictions {
+            margin-top: 20px;
+        }
+        #loss {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MNIST Classifier Training Visualization</h1>
+    <canvas id="visualizationCanvas" width="28" height="28"></canvas>
+    <p>Training Progress: <span id="progress">0%</span></p>
+    <p>Predicted Label: <span id="predictedLabel">None</span></p>
+    <div id="predictions">
+        <h3>Prediction Probabilities:</h3>
+        <div id="probabilities"></div>
+    </div>
+    <canvas id="lossCanvas" width="280" height="64"></canvas>
+    <script src="scripts/js.js"></script>
+</body>
+</html>
