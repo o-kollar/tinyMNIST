@@ -4,29 +4,240 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MNIST Classifier Visualization</title>
-    <style>
-        canvas {
-            border: 1px solid black;
-            margin-top: 10px;
-        }
-        #predictions {
-            margin-top: 20px;
-        }
-        #loss {
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script src="https://unpkg.com/alpinejs"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="data.js"></script>
 </head>
-<body>
-    <h1>MNIST Classifier Training Visualization</h1>
-    <canvas id="visualizationCanvas" width="28" height="28"></canvas>
-    <p>Training Progress: <span id="progress">0%</span></p>
-    <p>Predicted Label: <span id="predictedLabel">None</span></p>
-    <div id="predictions">
-        <h3>Prediction Probabilities:</h3>
-        <div id="probabilities"></div>
+<body class="font-mono">
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[200px_1fr] lg:gap-8">
+        <div class=" bg-zinc-200 p-3">
+            <label
+                for="learning_rate"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <input
+                    type="number"
+                    id="learning_rate"
+                    placeholder="Enter a value between 0 and 1 for learning rate"
+                    x-model="Data.training_stats.learning_rate"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                    class="peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm"
+                />
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Learning Rate
+                </span>
+            </label>
+            <label
+                for="gradient_clip"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <input
+                    type="number"
+                    id="gradient_clip"
+                    placeholder="Gradient clip value, e.g., 0.5"
+                    x-model="Data.training_stats.gradient_clip"
+                    step="0.01"
+                    min="0"
+                    class="peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm"
+                />
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Gradient Clip
+                </span>
+            </label>
+            <label
+                for="beta1"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <input
+                    type="number"
+                    id="beta1"
+                    placeholder="Beta value (e.g., 0.9 for Adam optimizer)"
+                    x-model="Data.training_stats.beta1"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                    class="peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm"
+                />
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Beta
+                </span>
+            </label>
+            <label
+                for="epsilon"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <div x-text="Data.training_stats.epsilon"></div>
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Epsilon
+                </span>
+            </label>
+            <label
+                for="input_dim"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <div x-text="Data.model_params.input_dim"></div>
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Input Dim
+                </span>
+            </label>
+            <label
+                for="kernel_dim"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <input
+                    type="number"
+                    id="kernel_dim"
+                    placeholder="Number of dimensions for each kernel"
+                    x-model="Data.model_params.kernel_dim"
+                    step="1"
+                    min="1"
+                    class="peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm"
+                />
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Kernel Dim
+                </span>
+            </label>
+            <label
+                for="num_kernels"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <input
+                    type="number"
+                    id="num_kernels"
+                    placeholder="Number of kernels to use"
+                    x-model="Data.model_params.num_kernels"
+                    step="1"
+                    min="1"
+                    class="peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm"
+                />
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Num Kernels
+                </span>
+            </label>
+            <label
+                for="hidden_nodes"
+                class="relative block overflow-hidden border-b border-gray-200 bg-transparent pt-3 focus-within:border-blue-600"
+            >
+                <input
+                    type="number"
+                    id="hidden_nodes"
+                    placeholder="Number of nodes in hidden layers"
+                    x-model="Data.model_params.hidden_nodes"
+                    step="1"
+                    min="1"
+                    class="peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm"
+                />
+                <span
+                    class="absolute start-0 top-2 -translate-y-1/2 text-xs text-gray-700 transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs"
+                >
+                    Hidden Nodes
+                </span>
+            </label>
+
+
+            <a
+            x-on:click="trainNetwork(1)"
+  class="group relative inline-flex items-center overflow-hidden bg-indigo-600 px-8 py-3 text-white focus:outline-none focus:ring active:bg-indigo-500"
+  href="#"
+>
+  <span class="absolute -start-full transition-all group-hover:start-4">
+    <span class="material-symbols-outlined">
+        play_arrow
+        </span>
+  </span>
+
+  <span   class="text-sm font-medium transition-all group-hover:ms-4"> Start Training </span>
+</a>
+        </div>
+
+        <div class="">
+            <div class="p-4">
+                <h1 class="font-semibold  text-4xl">TinyMNIST</h1>
+                <p class="font-thin text-sm"> Learning to recognize handwritten digits using Javascript.</p>
+                <br>
+                <p>The network starts by processing an input MNIST image,</p> 
+               <p> which is a grayscale image of a handwritten digit, sized 28x28 pixels.</p>
+                <div class="grid  gap-4 w-64 grid-cols-2 ">
+                    <div class="h-32 w-32 rounded-lg ">
+                        <img class="" src="assets/scribbles-scribbles-60.svg">
+                    </div>
+                    <div class="h-32 rounded-lg  w-16 p-4">
+                        <canvas id="visualizationCanvas" width="28" height="28"></canvas>
+                    </div>
+                  </div>
+                <p>
+                  When the image enters the first convolution layer,</p><p> the network uses kernels (filters) to scan across the image.</p>
+                  <br>
+                  <p> This sliding process generates a new matrix known as a feature map</p>
+                  <img class="w-96 h-32 ml-96 hidden sm:block" src="assets/scribbles-scribbles-84.svg">
+
+                  <div class="grid  gap-4 grid-cols-2 lg:gap-8 w-96">
+                    <div class="h-32 w-16 -mt-16"> <canvas id="FeatureMaps" class="ml-8"></canvas></div>
+                    <div class=""> <img class=" h-32  w" src="assets/scribbles-scribbles-73.svg"></div>
+                  </div>
+                  
+                 
+              
+                  
+                  
+                  
+                 
+
+                <p>After several rounds of convolution and pooling,</p> <p> the feature maps are flattened into a one-dimensional vector and passed through fully connected layers.</p> <br> <canvas class="-ml-6" id="networkCanvas" width="800" height="500"></canvas><p> These layers perform the final classification, mapping the learned features to the output labels (digits 0-9).</p>
+               <br>
+                <p> network’s final prediction is the digit with the highest probability.</p>
+                <div class="grid  gap-4 w-96 grid-cols-2 ">
+                    <div class="h-32 64 rounded-lg ">
+                        <img class="mt-10" src="assets/scribbles-scribbles-60.svg">
+                    </div>
+                    <div class="h-32 rounded-lg  w-16">
+                        <canvas class="ml-4" id="softmaxCanvas" ></canvas>
+                    </div>
+                  </div>
+              <br>
+               <br>
+                <p>Loss measures the difference between the predicted output of the model and the actual target value (i.e., the ground truth label).</p><p>The lower the loss, the better the model is at making predictions.</p>
+                <canvas id="lossCanvas" ></canvas>
+            </div>
+        </div>
     </div>
-    <canvas id="lossCanvas" width="280" height="64"></canvas>
-    <script src="scripts/js.js"></script>
+    <footer class="bg-gray-50">
+        <div class="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+          <div class="sm:flex sm:items-center sm:justify-between">
+            <div class="flex justify-center text-teal-600 sm:justify-start">
+           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64px" height="64px" viewBox="0,0,256,256"><g fill="none" fill-rule="nonzero" stroke="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="" stroke-dashoffset="0" font-family="none" font-weight="none" font-size="none" text-anchor="none" style="mix-blend-mode: normal"><g transform="scale(9.14286,9.14286)"><path d="M13.604,24.604c-7.048,0.179 -11.219,-1.448 -11.423,-9.459c-0.204,-8.011 4.256,-12.754 11.304,-12.933c7.048,-0.179 10.36,3.745 10.563,11.756c0.203,8.011 -3.396,10.457 -10.444,10.636z" fill="#66a3ff"></path><path d="M10.564,25.5c-0.089,0 -0.187,-0.008 -0.292,-0.028c-4.973,-1.617 -8.272,-6.109 -8.272,-11.193c0,-6.495 5.383,-11.779 12,-11.779c6.617,0 12,5.284 12,11.779c0,5.091 -3.312,9.577 -8.24,11.162c-0.571,0.114 -0.893,-0.044 -1.073,-0.193c-0.235,-0.194 -0.37,-0.493 -0.37,-0.819l0.004,-0.624c0.004,-0.579 0.011,-1.456 0.011,-2.465c0,-1.114 -0.458,-1.586 -0.598,-1.704c-0.153,-0.129 -0.215,-0.337 -0.157,-0.528c0.059,-0.192 0.226,-0.33 0.425,-0.352c2.374,-0.257 4.801,-1.061 4.801,-5.067c0,-1.036 -0.352,-1.939 -1.045,-2.687c-0.132,-0.142 -0.17,-0.348 -0.097,-0.528c0.101,-0.25 0.379,-1.116 -0.011,-2.321c-0.356,0.028 -1.172,0.202 -2.511,1.096c-0.121,0.08 -0.271,0.104 -0.409,0.066c-0.864,-0.235 -1.788,-0.357 -2.747,-0.363c-0.954,0.005 -1.877,0.127 -2.74,0.363c-0.14,0.038 -0.288,0.015 -0.408,-0.066c-1.341,-0.889 -2.16,-1.066 -2.528,-1.093c-0.422,1.309 -0.051,2.196 -0.004,2.299c0.084,0.184 0.048,0.401 -0.09,0.548c-0.696,0.745 -1.049,1.648 -1.049,2.686c0,4.008 2.423,4.815 4.793,5.077c0.198,0.022 0.364,0.159 0.423,0.35c0.059,0.19 0,0.397 -0.152,0.527c-0.166,0.142 -0.458,0.487 -0.559,1.2c-0.024,0.171 -0.136,0.318 -0.294,0.388c-0.614,0.27 -2.716,0.984 -3.98,-1.141c-0.004,-0.007 -0.088,-0.151 -0.246,-0.323c0.197,0.268 0.4,0.614 0.577,1.054c0.036,0.107 0.622,1.784 3.306,1.21c0.149,-0.031 0.301,0.006 0.417,0.1c0.117,0.094 0.186,0.236 0.187,0.387l0.014,1.92c0,0.325 -0.135,0.624 -0.371,0.819c-0.143,0.119 -0.374,0.243 -0.715,0.243zM14,3.5c-6.065,0 -11,4.835 -11,10.779c0,4.65 3.021,8.759 7.518,10.226c0.055,0.008 0.11,-0.01 0.121,-0.017l0.005,-0.623l-0.005,-0.755c-3.088,0.375 -3.848,-1.931 -3.856,-1.956c-0.417,-1.032 -0.994,-1.333 -1.019,-1.346c-0.281,-0.183 -0.865,-0.574 -0.698,-1.11c0.15,-0.485 0.774,-0.517 1.001,-0.526c1.437,0.098 2.162,1.364 2.192,1.417c0.7,1.177 1.771,1.067 2.471,0.82c0.062,-0.279 0.152,-0.538 0.269,-0.77c-2.281,-0.406 -4.836,-1.62 -4.836,-5.951c0,-1.192 0.374,-2.246 1.112,-3.134c-0.164,-0.537 -0.355,-1.647 0.208,-3.061c0.055,-0.14 0.171,-0.247 0.314,-0.292c0.193,-0.06 1.245,-0.284 3.4,1.093c0.883,-0.221 1.819,-0.335 2.785,-0.341c0.971,0.005 1.906,0.12 2.79,0.34c2.143,-1.377 3.193,-1.152 3.386,-1.093c0.144,0.045 0.259,0.152 0.314,0.292c0.549,1.38 0.378,2.494 0.216,3.057c0.739,0.892 1.113,1.946 1.113,3.14c0,4.329 -2.556,5.539 -4.839,5.942c0.239,0.476 0.369,1.062 0.369,1.709c0,1.013 -0.006,1.892 -0.011,2.473l-0.004,0.616c0.017,0.054 0.078,0.068 0.197,0.044c4.454,-1.435 7.487,-5.538 7.487,-10.194c0,-5.944 -4.935,-10.779 -11,-10.779z" fill="#000000"></path></g></g></svg>
+           <p>view on Github</p>
+            </div>
+          
+      
+            <p class="mt-4 text-center text-sm text-gray-500 lg:mt-0 lg:text-right">
+              Copyright &copy; 2022. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+      
+
+    <script src="utils/charts.js"></script>
+    <script src="convnet.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

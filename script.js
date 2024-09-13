@@ -1,200 +1,3 @@
-// Utility functions (same as before)
-function sigmoid(x) {
-    return 1 / (1 + Math.exp(-x));
-}
-
-function dsigmoid(y) {
-    return y * (1 - y);
-}
-
-function randomWeight() {
-    return Math.random() * 2 - 1;
-}
-
-function relu(x) {
-    return Math.max(0, x);
-}
-
-function drelu(x) {
-    return x > 0 ? 1 : 0;
-}
-
-// Helper function to perform convolution with residual connections
-function convolveWithResidual(input, kernel, stride = 1, padding = 0) {
-    const outputSize = Math.floor((input.length - kernel.length + 2 * padding) / stride) + 1;
-    const output = new Array(outputSize).fill(0).map(() => new Array(outputSize).fill(0));
-
-    for (let i = 0; i < outputSize; i++) {
-        for (let j = 0; j < outputSize; j++) {
-            let sum = 0;
-            for (let ki = 0; ki < kernel.length; ki++) {
-                for (let kj = 0; kj < kernel[ki].length; kj++) {
-                    const ii = i * stride + ki - padding;
-                    const jj = j * stride + kj - padding;
-                    if (ii >= 0 && ii < input.length && jj >= 0 && jj < input.length) {
-                        sum += input[ii][jj] * kernel[ki][kj];
-                    }
-                }
-            }
-            output[i][j] = relu(sum + input[i * stride][j * stride]);  // Adding residual connection
-        }
-    }
-    return output;
-}
-
-// Helper function for max pooling
-function maxPool(input, poolSize = 2, stride = 2) {
-    const outputSize = Math.floor((input.length - poolSize) / stride) + 1;
-    const output = new Array(outputSize).fill(0).map(() => new Array(outputSize).fill(0));
-
-    for (let i = 0; i < outputSize; i++) {
-        for (let j = 0; j < outputSize; j++) {
-            let maxVal = -Infinity;
-            for (let pi = 0; pi < poolSize; pi++) {
-                for (let pj = 0; pj < poolSize; pj++) {
-                    const ii = i * stride + pi;
-                    const jj = j * stride + pj;
-                    maxVal = Math.max(maxVal, input[ii][jj]);
-                }
-            }
-            output[i][j] = maxVal;
-        }
-    }
-    return output;
-}
-
-// Neural Network class with a convolutional layer and optimizations
-class ConvNet {
-    constructor(input_dim, kernel_dim, num_kernels, hidden_nodes, output_nodes) {
-        this.input_dim = input_dim; // Assuming square input, e.g., 28x28
-        this.kernel_dim = kernel_dim; // Square kernel, e.g., 3x3
-        this.num_kernels = num_kernels; // Number of kernels/filters
-        this.hidden_nodes = hidden_nodes;
-        this.output_nodes = output_nodes;
-
-        this.kernels = new Array(this.num_kernels).fill(0).map(() => 
-            new Array(this.kernel_dim).fill(0).map(() => 
-                new Array(this.kernel_dim).fill(0).map(randomWeight)));
-        
-        const conv_output_dim = this.input_dim - this.kernel_dim + 1;
-        const pooled_dim = Math.floor(conv_output_dim / 2); // After 2x2 pooling
-
-        this.weights_fc = new Array(this.hidden_nodes).fill(0).map(() => 
-            new Array(this.num_kernels * pooled_dim * pooled_dim).fill(0).map(randomWeight));
-        this.weights_ho = new Array(this.output_nodes).fill(0).map(() => 
-            new Array(this.hidden_nodes).fill(0).map(randomWeight));
-
-        this.bias_fc = new Array(this.hidden_nodes).fill(0).map(randomWeight);
-        this.bias_o = new Array(this.output_nodes).fill(0).map(randomWeight);
-
-        // Parameters for optimization
-        this.learning_rate = 7e-3;
-        this.momentum = 0.9;
-        this.weight_decay = 1e-5;
-        this.lr_decay = 0.99;
-
-        // Velocity terms for momentum
-        this.velocities_fc = this.weights_fc.map(row => row.map(() => 0));
-        this.velocities_ho = this.weights_ho.map(row => row.map(() => 0));
-    }
-
-    predict(input_array) {
-        // Convert the input array into a 2D array
-        const input2D = [];
-        for (let i = 0; i < this.input_dim; i++) {
-            input2D.push(input_array.slice(i * this.input_dim, (i + 1) * this.input_dim));
-        }
-
-        // Convolutional layer with residual connections
-        const convOutputs = this.kernels.map(kernel => {
-            const convOutput = convolveWithResidual(input2D, kernel);
-            return convOutput.map(row => row.map(relu));
-        });
-
-        // Pooling layer
-        const pooledOutputs = convOutputs.map(convOutput => maxPool(convOutput));
-
-        // Flatten pooled output
-        const flattened = pooledOutputs.flat(2);
-
-        // Fully connected layer
-        let hidden = this.weights_fc.map((weights_row, i) => 
-            sigmoid(weights_row.reduce((sum, weight, j) => sum + weight * flattened[j], this.bias_fc[i])));
-
-        // Output layer
-        let output = this.weights_ho.map((weights_row, i) => 
-            sigmoid(weights_row.reduce((sum, weight, j) => sum + weight * hidden[j], this.bias_o[i])));
-
-        return output;
-    }
-
-    train(input_array, target_array) {
-        // Convert the input array into a 2D array
-        const input2D = [];
-        for (let i = 0; i < this.input_dim; i++) {
-            input2D.push(input_array.slice(i * this.input_dim, (i + 1) * this.input_dim));
-        }
-
-        // Convolutional layer with residual connections
-        const convOutputs = this.kernels.map(kernel => {
-            const convOutput = convolveWithResidual(input2D, kernel);
-            return convOutput.map(row => row.map(relu));
-        });
-
-        // Pooling layer
-        const pooledOutputs = convOutputs.map(convOutput => maxPool(convOutput));
-
-        // Flatten pooled output
-        const flattened = pooledOutputs.flat(2);
-
-        // Fully connected layer
-        let hidden = this.weights_fc.map((weights_row, i) => 
-            sigmoid(weights_row.reduce((sum, weight, j) => sum + weight * flattened[j], this.bias_fc[i])));
-
-        // Output layer
-        let outputs = this.weights_ho.map((weights_row, i) => 
-            sigmoid(weights_row.reduce((sum, weight, j) => sum + weight * hidden[j], this.bias_o[i])));
-
-        // Calculate output errors
-        let output_errors = outputs.map((output, i) => target_array[i] - output);
-
-        // Calculate gradients for the output layer
-        let gradients = outputs.map((output, i) => dsigmoid(output) * output_errors[i] * this.learning_rate);
-
-        // Update weights and biases for the output layer with momentum and weight decay
-        this.weights_ho.forEach((weights_row, i) => {
-            weights_row.forEach((weight, j) => {
-                const delta = gradients[i] * hidden[j];
-                this.velocities_ho[i][j] = this.momentum * this.velocities_ho[i][j] + delta - this.weight_decay * weight;
-                this.weights_ho[i][j] += this.velocities_ho[i][j];
-            });
-        });
-        this.bias_o = this.bias_o.map((bias, i) => bias + gradients[i]);
-
-        // Backpropagate the error to the fully connected layer
-        let hidden_errors = this.weights_ho[0].map((_, i) =>
-            this.weights_ho.reduce((sum, weights_row, j) => sum + weights_row[i] * output_errors[j], 0));
-
-        // Calculate gradients for the fully connected layer
-        let hidden_gradients = hidden.map((output, i) => dsigmoid(output) * hidden_errors[i] * this.learning_rate);
-
-        // Update weights and biases for the fully connected layer with momentum and weight decay
-        this.weights_fc.forEach((weights_row, i) => {
-            weights_row.forEach((weight, j) => {
-                const delta = hidden_gradients[i] * flattened[j];
-                this.velocities_fc[i][j] = this.momentum * this.velocities_fc[i][j] + delta - this.weight_decay * weight;
-                this.weights_fc[i][j] += this.velocities_fc[i][j];
-            });
-        });
-        this.bias_fc = this.bias_fc.map((bias, i) => bias + hidden_gradients[i]);
-
-        // Apply learning rate decay
-        this.learning_rate *= this.lr_decay;
-
-        // Calculate the loss (sum of absolute errors)
-        return output_errors.reduce((sum, error) => sum + Math.abs(error), 0);
-    }
-}
 
 // Visualization setup remains the same
 const canvas = document.getElementById('visualizationCanvas');
@@ -218,13 +21,7 @@ function drawDigit(digitArray) {
     ctx.putImageData(imageData, 0, 0);
 }
 
-function getRandomTrainingData() {
-    const inputs = new Array(784).fill(0).map(() => Math.random());
-    const label = Math.floor(Math.random() * 10);
-    const targets = new Array(10).fill(0);
-    targets[label] = 1;
-    return { inputs, targets, label };
-}
+
 
 function updateProgress(percent) {
     progressText.textContent = `${percent.toFixed(2)}%`;
@@ -243,50 +40,29 @@ function updatePredictions(predictions) {
     });
 }
 
-function plotLoss(loss) {
-    losses.push(loss);
-    lossCtx.clearRect(0, 0, lossCanvas.width, lossCanvas.height);
 
-    lossCtx.beginPath();
-    lossCtx.moveTo(0, lossCanvas.height);
-    for (let i = 0; i < losses.length; i++) {
-        const x = (i / (losses.length - 1)) * lossCanvas.width;
-        const y = lossCanvas.height - (losses[i] * lossCanvas.height / Math.max(...losses));
-        lossCtx.lineTo(x, y);
-    }
-    lossCtx.stroke();
-}
 
-// Training the CNN with Visualizatio n
-const cnn = new ConvNet(28, 9, 36, 128, 10);  // Parameters: input_dim, kernel_dim, num_kernels, hidden_nodes, output_nodes
-let trainingIterations = 170;
-
+const cnn = new ConvNet(Data.model_params.input_dim, Data.model_params.kernel_dim, Data.model_params.num_kernels, Data.model_params.hidden_nodes, Data.model_params.output_nodes); 
 async function fetchAndProcessMnistData() {
     try {
-        const response = await fetch("https://datasets-server.huggingface.co/rows?dataset=ylecun%2Fmnist&config=mnist&split=train&offset=0&length=100");
-        const result = await response.json();
 
-        // Inspect the structure of the result
-        
+        const labels = Data.training_data
 
-        // Adjust the data extraction based on the actual structure
-        // For example, if the actual MNIST data is nested in a specific property
-        if (!result || !result.rows || !Array.isArray(result.rows)) {
-            throw new Error("Expected data to be in 'rows' property as an array.");
+        if (!Array.isArray(labels)) {
+            throw new Error("Expected labels to be an array.");
         }
 
-        // Process each row in the array
-        const data = await Promise.all(result.rows.map(async (row) => {
-            if (!row.row || !row.row.image || !row.row.image.src || row.row.label === undefined) {
-                console.error("Invalid data format", row);
+        // Process each label in the array
+        const data = await Promise.all(labels.map(async (item) => {
+            const { image: base64Image, label } = item;
+
+            if (!base64Image || label === undefined) {
+                console.error("Invalid data format", item);
                 return null;
             }
 
-            const imageSrc = row.row.image.src;
-            const label = row.row.label;
-
             try {
-                const inputs = await extractPixelData(imageSrc);
+                const inputs = await extractPixelData(base64Image);
                 const targets = new Array(10).fill(0);
                 targets[label] = 1;
                 return { inputs, targets, label };
@@ -304,11 +80,11 @@ async function fetchAndProcessMnistData() {
     }
 }
 
-async function extractPixelData(imageSrc) {
+async function extractPixelData(base64Image) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'Anonymous'; // Handle CORS issues
-        img.src = imageSrc;
+        img.src = base64Image;
 
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -335,32 +111,202 @@ async function extractPixelData(imageSrc) {
         img.onerror = (error) => reject(error);
     });
 }
+const canvs = document.getElementById("networkCanvas");
+const ct = canvs.getContext("2d");
+const cans = document.getElementById("FeatureMaps");
+const c = cans.getContext("2d");
 
-async function trainNetwork(epochs) {
-    // Fetch and process the MNIST data
-    const mnistData = await fetchAndProcessMnistData();
-    const trainingIterations = mnistData.length;
+// Neural network visualization parameters
+const layerX = [0, 100, 400];  // X coordinates for layers
+const nodeRadius = 20;
+const inputDim = 28;  // For example, 28x28 input images
+const numKernels = 8;
+const kernelDim = 3;
+const hiddenNodes = 10;
+const outputNodes = 10;
+const spaceY = 40;
 
-    for (let epoch = 0; epoch < epochs; epoch++) {
-        console.log(`Epoch ${epoch + 1}/${epochs}`);
+// Example network parameters
+let convNet = new ConvNet(inputDim, kernelDim, numKernels, hiddenNodes, outputNodes);
 
-        for (let i = 0; i < trainingIterations; i++) {
-            const { inputs, targets, label } = mnistData[i];
-            const loss = cnn.train(inputs, targets);
-            console.log("iteration", i, "loss", loss);
+// Helper function to draw a circle for a node with gradient fill
+function drawNode(x, y, activation, label = '') {
+  const gradient = ct.createRadialGradient(x, y, nodeRadius * 0.6, x, y, nodeRadius);
+  gradient.addColorStop(0, `rgba(0, 0, 255, ${activation})`);
+  gradient.addColorStop(1, 'rgba(0, 0, 255, 0.1)');
 
-            const predictions = cnn.predict(inputs);
+  ct.beginPath();
+  ct.arc(x, y, nodeRadius, 0, Math.PI * 2);
+  ct.fillStyle = gradient;
+  ct.fill();
+  ct.strokeStyle = 'black';
+  ct.lineWidth = 2;
+  ct.stroke();
 
-            drawDigit(inputs);
-            updateProgress(((i + 1) / trainingIterations) * 100);
-            updatePredictions(predictions);
-            plotLoss(loss);
-        }
-
-        // Optionally, you can add code here to evaluate the model on a validation set or print epoch summaries
-    }
+  if (label) {
+    ct.fillStyle = "black";
+    ct.font = "12px Arial";
+    ct.fillText(label, x - 5, y + 5);
+  }
 }
 
-// Start the training process with a specified number of epochs
-const numberOfEpochs = 16; // Set the number of epochs
-trainNetwork(numberOfEpochs);
+// Helper function to draw a connection (weight) with arrowheads
+function drawConnection(x1, y1, x2, y2, weight) {
+  const thickness = Math.abs(weight) * 2;  // Weight thickness based on magnitude
+  const arrowSize = 6;
+
+  ct.beginPath();
+  ct.moveTo(x1, y1);
+  ct.lineTo(x2, y2);
+  ct.lineWidth = thickness;
+  ct.strokeStyle = "grey";
+  ct.stroke();
+
+  // Draw arrowhead
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ct.beginPath();
+  ct.moveTo(x2, y2);
+  ct.lineTo(x2 - arrowSize * Math.cos(angle - Math.PI / 6), y2 - arrowSize * Math.sin(angle - Math.PI / 6));
+  ct.lineTo(x2 - arrowSize * Math.cos(angle + Math.PI / 6), y2 - arrowSize * Math.sin(angle + Math.PI / 6));
+  ct.closePath();
+  ct.fillStyle = ct.strokeStyle;
+  ct.fill();
+}
+
+// Draw layers with labels
+function drawNetwork(inputActivations, hiddenActivations, outputActivations, weights, biases) {
+  ct.clearRect(0, 0, canvs.width, canvs.height);  // Clear the canvas
+
+
+
+  // Draw hidden layer and connections
+  for (let j = 0; j < hiddenNodes; j++) {
+    let yHidden = 50 + j * spaceY;
+    drawNode(layerX[1], yHidden, hiddenActivations[j] || 0, `H${j}`);
+
+    
+  }
+
+  // Draw output layer and connections
+  for (let k = 0; k < outputNodes; k++) {
+    let yOutput = 50 + k * spaceY;
+    drawNode(layerX[2], yOutput, outputActivations[k] || 0, `O${k}`);
+
+    for (let j = 0; j < hiddenNodes; j++) {
+      let yHidden = 50 + j * spaceY;
+      drawConnection(layerX[1], yHidden, layerX[2], yOutput, weights.hiddenToOutput[j][k]);
+    }
+  }
+
+  // Draw layer labels
+  ct.fillStyle = "black";
+  ct.font = "16px Arial";
+  ct.fillText("Hidden Layer", layerX[1] - 30, 30);
+  ct.fillText("Output Layer", layerX[2] - 30, 30);
+}
+
+function drawFeatureMaps(featureMapsData) {
+  const mapWidth = featureMapsData.dimensions.width;
+  const mapHeight = featureMapsData.dimensions.height;
+  const padding = 10;    // Space between feature maps
+
+  // Calculate the number of rows and columns
+  const numMaps = featureMapsData.featureMaps.length;
+  const cols = Math.ceil(Math.sqrt(numMaps));
+  const rows = Math.ceil(numMaps / cols);
+
+  // Draw each feature map as a grayscale image
+  featureMapsData.featureMaps.forEach((featureMap, index) => {
+    const x = 10 + (index % cols) * (mapWidth + padding);
+    const y = 10 + Math.floor(index / cols) * (mapHeight + padding);
+
+    // Normalize feature map
+    const flatMap = featureMap.flat(); // Flatten 2D array to 1D
+    const min = Math.min(...flatMap);
+    const max = Math.max(...flatMap);
+    const range = max - min;
+
+    // Draw feature map
+    for (let row = 0; row < mapHeight; row++) {
+      for (let col = 0; col < mapWidth; col++) {
+        const value = (featureMap[row][col] - min) / range;
+        c.fillStyle = `rgba(${value * 255}, ${value * 255}, ${value * 255}, 1)`;
+        c.fillRect(x + col, y + row, 1, 1);
+      }
+    }
+
+    // Draw feature map label
+    c.fillStyle = "black";
+    c.font = "10px Arial";
+    c.fillText(`F${index}`, x, y - 2);
+  });
+}
+
+
+// Get the current activations and weights
+function updateVisualization(inputs) {
+  let inputArray = inputs;  // Example input
+  let activations = cnn.getActivations(inputArray);
+  let weightsAndBiases = cnn.getWeightsAndBiases(inputArray);
+  let featureMaps = cnn.getFeatureMaps(inputArray); // Get feature maps for visualization
+
+
+  drawNetwork(
+    activations.input,
+    activations.hidden,
+    activations.output,
+    weightsAndBiases,
+    weightsAndBiases
+  );
+
+  drawFeatureMaps(featureMaps); // Draw feature maps
+}
+
+
+async function trainNetwork(epochs) {
+
+  // Fetch and process the MNIST data
+  const mnistData = await fetchAndProcessMnistData();
+  const trainingIterations = mnistData.length;
+
+  for (let epoch = 0; epoch < epochs; epoch++) {
+      console.log(`Epoch ${epoch + 1}/${epochs}`);
+
+      for (let i = 0; i < trainingIterations; i++) {
+          // Fetch random data from the dataset
+          const { inputs, targets, label } = mnistData[Math.floor(Math.random() * 1000)];
+          
+          // Perform the training step
+          const loss = cnn.train(inputs, targets);
+
+          // Plot the loss
+          plotLoss(loss);
+
+          console.log("Iteration", i, "Loss", loss);
+
+          // Pause to allow UI to update
+          await new Promise(resolve => setTimeout(resolve, 0)); // This allows the UI to update in between iterations
+
+          // After 100 iterations, make a prediction
+          if ((i + 1) % 100 === 0) {
+              const randomIndex = Math.floor(Math.random() * trainingIterations);
+              const { inputs: predInputs, label: predLabel } = mnistData[randomIndex];
+
+              // Make a prediction
+              const predictions = cnn.predict(predInputs);
+
+              drawSoftmaxPredictions(predictions)
+             
+
+              // Draw the digit and update predictions in the UI
+              drawDigit(predInputs);
+             updateVisualization(predInputs);
+              //updatePredictions(predictions);
+              
+
+              console.log(`Prediction after ${i + 1} iterations: ${predictions}`);
+          }
+      }
+  }
+}
+
