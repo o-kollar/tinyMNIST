@@ -4,6 +4,42 @@
 
 This project provides a JavaScript-based implementation for visualizing and training a Convolutional Neural Network (CNN). It includes functionalities for visualizing input images, feature maps, network activations, training progress, and predictions.
 
+```mermaid
+graph TD
+    A[Input Layer] --> B[Conv Layer with Residual Connections]
+    B --> C[ReLU Activation]
+    C --> D[Max Pooling Layer 2x2]
+    D --> E[Flatten Layer]
+    E --> F[Fully Connected Layer Hidden Layer]
+    F --> G[ReLU Activation]
+    G --> H[Output Layer Softmax]
+    
+    subgraph Convolutional Layer
+        B
+        C
+        D
+    end
+
+    subgraph Fully Connected Layer
+        F
+        G
+    end
+
+    subgraph Output Layer
+        H
+    end
+
+    style A fill:#f9f,stroke:#333,stroke-width:4px
+    style B fill:#ccf,stroke:#333,stroke-width:2px
+    style C fill:#cfc,stroke:#333,stroke-width:2px
+    style D fill:#fcf,stroke:#333,stroke-width:2px
+    style E fill:#fff,stroke:#333,stroke-width:2px
+    style F fill:#cfc,stroke:#333,stroke-width:2px
+    style G fill:#ccf,stroke:#333,stroke-width:2px
+    style H fill:#f9f,stroke:#333,stroke-width:4px
+
+```
+
 ## Features
 
 - **Digit Visualization**: Display input images as grayscale images.
