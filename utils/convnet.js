@@ -69,7 +69,7 @@ function sigmoid(x) {
     return output;
   }
   
-  class ConvNet {
+  class Ochko {
     constructor(input_dim, kernel_dim, num_kernels, hidden_nodes, output_nodes) {
         this.input_dim = input_dim; // Assuming square input, e.g., 28x28
         this.kernel_dim = kernel_dim; // Square kernel, e.g., 3x3
